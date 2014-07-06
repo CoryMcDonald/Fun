@@ -22,6 +22,8 @@ def formatHeaderToJson(header):
         returnList.pop(None)
     return returnList
 
+
+#This is basically checking if there is a dev flag, I used this for testing so I wouldn't keep making requests to the page each run
 if os.path.isfile('dev'):
     ResponseFile = open('intake', 'r')
     DirtyHTML = ResponseFile.read()
@@ -30,22 +32,24 @@ else:
     Response = requests.get('http://www.co.washington.ar.us/sheriff/resource/DintakeRoster.asp')
     DirtyHTML = Response.content
 
-
+#Defining "soup" to be the output of the formatted HTML
 soup = BeautifulSoup((DirtyHTML))
 
 inmateOutput = dict()
 
 inmates = []
 count = 0
+#Here I go through all the links on the intake page located in the Respone of the DintakeRoster.asp
 for link in soup.find_all('a'):
     logging.warning('scraping page: ' + str(count))
     href = (link.get('href'))
     inmateResponse = requests.get('http://www.co.washington.ar.us/sheriff/resource/' + href)
     inmatePage = BeautifulSoup(inmateResponse.content)
-    # print(href)
     
+    #Grab the table of information
     results = inmatePage.find('table').find_all('tr')
     index = 0
+    #For every tag in it we will grab the results of it and append it to json-like object
     for tag in results:
         if tag.text.strip() != '' :
             if index == 0:
@@ -65,28 +69,17 @@ for link in soup.find_all('a'):
     #     break
 
 
-
+#If there is an existing "database" i.e. json file we will append it to it
 if os.path.isfile('intakeDB.json'):
     intakeDB = open('intakeDB.json', 'r')
     prevDB = json.loads(intakeDB.read())
     inmates.extend(prevDB)
 
-
+#Write results to page
 outputDB = intakeDB = open('intakeDB.json', 'w')
 outputDB.write(json.dumps(inmates, indent=4, sort_keys=True))
-#todo figure out how to get unique values
-# ds = json.loads(currentJSON) #this contains the json
-# unique_stuff = { each['Address'] : each for each in ds }.values()
 
-
-    #Create another response
-    
-#Compare to ensure no duplicates
-# ResponseFile = open('intake', 'r')
-# DataBase = ResponseFile.read()
-
-#Store the file for comparision of another day
-
-# Response = requests.get('http://www.co.washington.ar.us/sheriff/resource/DintakeRoster.asp')
-# ResponseFile = open('intake', 'w')
-# ResponseFile.write(str(Response.content))
+#todo figure out how only store unique values
+#todo migrate over to SQL table for better performance
+#todo integrate google maps api so I can populate a map with criminal information
+#todo parse json and find out most committed crime and location
